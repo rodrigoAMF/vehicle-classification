@@ -1,2 +1,2 @@
-# Animal Classification
-CNN image classificator using PyTorch
+# Vehicle Classification
+CNN vehicles image classificator build with PyTorch
