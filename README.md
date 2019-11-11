@@ -17,6 +17,12 @@ To activate the environment after installation use
 
 `activate vehicle-classification` (Windows) or `source activate vehicle-classification` (Linux)
 
+# Update Environment
+
+Activate the envirtoment and then run:
+
+`conda env update --file environment.yml`
+
 
 # How to contribute
 Follow the instructions below to contribute in this project:
