@@ -1,4 +1,5 @@
 import os
+from PIL import Image
 
 import cv2
 import numpy as np
@@ -7,10 +8,33 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 import torchvision.transforms as transforms
+from torchvision import models
 from torchvision import datasets
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch import nn
+import torch.nn.functional as F
 from model import Net
 import matplotlib.pyplot as plt
+
+class Classifier(nn.Module):
+    def __init__(self):
+        super(Classifier, self).__init__()
+         # linear layer (1024 -> 512)
+        self.fc1 = nn.Linear(2048, 1024)
+        # linear layer (512 -> 256)
+        self.fc2 = nn.Linear(1024, 256)
+        # linear layer (256 -> 102)
+        self.fc3 = nn.Linear(256, 7)
+        # dropout layer (p=0.25)
+        self.dropout = nn.Dropout(0.25)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = self.fc3(x)
+        return x
 
 ## Functions used on split dataset ##
 def load_data(data_dir):
@@ -100,6 +124,46 @@ def load_model(path, verbose=True):
 
     return model, labels_map, criterion
 
+def load_resnet50_modified(path, verbose=True):
+    model = models.resnet50(pretrained=True)
+    classifier = Classifier()
+    model.fc = classifier
+    if os.path.isfile(path):
+        print("Loading model from %s ..." % path)
+        
+        checkpoint = torch.load(path)
+        model.load_state_dict(checkpoint['state_dict'])
+        model.transform = checkpoint['transform']
+        
+        epoch         = checkpoint['epoch']
+        learning_rate = checkpoint['learning_rate']
+        batch_size    = checkpoint['batch_size']
+        criterion     = checkpoint['criterion']
+        train_loss    = checkpoint['train_loss']
+        valid_loss    = checkpoint['valid_loss']
+   
+        train_acc     = checkpoint['train_acc']
+        valid_acc     = checkpoint['valid_acc']
+        train_prec    = checkpoint['train_prec']
+        valid_prec    = checkpoint['valid_prec']
+        train_recall  = checkpoint['train_recall']
+        valid_recall  = checkpoint['valid_recall']
+        
+        labels_map    = checkpoint['labels_map']
+        
+        print("Model loaded!")
+        if verbose:
+            print(model)
+            print("Model trained until epoch %s with learning rate %f and batch_size %d" % (epoch, learning_rate, batch_size))
+            print('Training Loss: {:.6f}      \tValidation Loss: {:.6f}'.format(train_loss, valid_loss))
+            print('Training Accuracy: {:.2f}%\tValidation Accuracy: {:.2f}%'.format(train_acc, valid_acc))
+            print('Training Precision: {:.2f}%\tValidation Precision: {:.2f}%'.format(train_prec, valid_prec))
+            print('Training Recall: {:.2f}%\t\tValidation Recall: {:.2f}%'.format(train_recall, valid_recall))
+    else:
+        print("No model found at %s" % path)
+
+    return model, labels_map, criterion
+
 def getModelPredicitons(model, loader, criterion=None):
     if criterion is not None:
         loss_total = 0
@@ -119,7 +183,6 @@ def getModelPredicitons(model, loader, criterion=None):
             loss_total += loss.item()*data.size(0)
         y_true.append(target.data.cpu())
         y_pred.append(pred.data.cpu())
-
     y_true = np.array(torch.cat(y_true))
     y_pred = np.array(torch.cat(y_pred))
     
@@ -189,4 +252,75 @@ def getMetricsDataframe(accuracy, precision, recall, f1_score, labels_map):
     metrics = metrics.applymap("{0:.2f}%".format)
     
     return metrics
+
+def process_image(image_path):
+    mean = np.array([0.485, 0.456, 0.406]) # provided mean
+    std = np.array([0.229, 0.224, 0.225])  # provided std
+    
+    img = Image.open(image_path)
+    # Checks whether height or width is larger, then resizes (10000 can be big number)
+    if img.size[0] > img.size[1]:
+        img.thumbnail((10000, 256))
+    else:
+        img.thumbnail((256, 10000))
+    
+    # Crop getting the differences between 244-each corner
+    left_margin = (img.width-224)/2
+    bottom_margin = (img.height-224)/2
+    right_margin = left_margin + 224
+    top_margin = bottom_margin + 224
+    img = img.crop((left_margin, bottom_margin, right_margin, top_margin))
+    
+    # Normalize
+    img = np.array(img)/255
+    img = (img - mean)/std
+    
+    # Move color channels to first dimension as expected by PyTorch
+    img = img.transpose((2, 0, 1))
+    
+    return img
+
+def getProbClasses(output, classes):
+    probabilities = np.squeeze(np.array(output))
+
+    probabilities_dict = {}
+    for i in range(len(probabilities)):
+        probabilities_dict[probabilities[i]] = classes[i]
+
+    probabilities = np.sort(probabilities)
+
+    top_classes = []
+    for prob in probabilities:
+        top_classes.append(probabilities_dict[prob])
+        
+    return probabilities, top_classes
+
+def getImagePredictions(image_path, model, labels_map):
+    classes = list(labels_map.values())
+    
+    image = torch.tensor(process_image(image_path))
+    image = image.view(1, 3, 224, 224).float()
+
+    model.eval()
+    with torch.no_grad():
+        output = model(image)
+    sm = torch.nn.Softmax(dim=1)
+    output = sm(output).cpu()
+
+    probabilities, top_classes = getProbClasses(output, classes)
+    
+    fig = plt.figure(figsize = (6,10))
+
+    plt.subplot(2, 1, 1)
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+    plt.imshow(img)
+    plt.title("car")
+
+    plt.subplot(2, 1, 2)
+    y_pos = np.arange(len(probabilities))
+    plt.barh(y_pos, probabilities)
+    plt.yticks(y_pos, top_classes)
+
+    plt.show()
     
