@@ -5,6 +5,7 @@
 ## Dataset and models folder
 dataset/
 models/
+predict/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
