@@ -33,16 +33,7 @@ class Net(nn.Module):
         self.fc3 = torch.nn.Linear(512, 7)
         
         self.dropout50 = nn.Dropout(0.50)
-        
-        #I.xavier_normal_(self.conv1.weight, gain=1)
-        #I.xavier_normal_(self.conv2.weight, gain=1)
-        #I.xavier_normal_(self.conv3.weight, gain=1)
-        #I.xavier_normal_(self.conv4.weight, gain=1)
-        #I.xavier_normal_(self.fc1.weight, gain=1)
-        #I.xavier_normal_(self.fc2.weight, gain=1)
-        #I.xavier_normal_(self.fc3.weight, gain=1)
-
-        
+       
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x))
         
@@ -70,5 +61,4 @@ class Net(nn.Module):
         
         x = self.fc3(x)
         
-        # a modified x, having gone through all the layers of your model, should be returned
         return x
