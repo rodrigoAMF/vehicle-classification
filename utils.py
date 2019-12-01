@@ -389,6 +389,6 @@ def plot_filters_multi_channel(t):
         ax1.set_title(str(i))
         ax1.set_xticklabels([])
         ax1.set_yticklabels([])
-           
+
     plt.tight_layout()
     plt.show()
