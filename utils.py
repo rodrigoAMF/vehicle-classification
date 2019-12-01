@@ -8,24 +8,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 import torchvision.transforms as transforms
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from torchvision import models
 from torchvision import datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch import nn
-import torch.nn.functional as F
+
+
 from model import Net
-import matplotlib.pyplot as plt
 
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-         # linear layer (1024 -> 512)
         self.fc1 = nn.Linear(2048, 1024)
-        # linear layer (512 -> 256)
         self.fc2 = nn.Linear(1024, 256)
-        # linear layer (256 -> 102)
         self.fc3 = nn.Linear(256, 7)
-        # dropout layer (p=0.25)
         self.dropout = nn.Dropout(0.25)
 
     def forward(self, x):
@@ -85,7 +83,6 @@ def imshow(img):
     plt.imshow(np.transpose(img, (1, 2, 0)))  # convert from Tensor image
     
 ## Functions used to evaluate the model ##
-
 def load_model(path, verbose=True):
     model = Net()
     if os.path.isfile(path):
@@ -220,8 +217,6 @@ def printAccuracyPerClass(class_correct, class_total, labels_map, split_name="Va
     for i in range(len(class_total)):
         percentage_correct = (class_correct[i]/class_total[i])*100.0
         print("%s accuracy of %-12s %.2f%% (%d/%d)" % (split_name, labels_map[i], percentage_correct, class_correct[i], class_total[i]))
-    #percentage_total = (class_correct.sum()/class_total.sum()) * 100.0
-    #print("\n%s accuracy (Overall): %.2f%% (%d/%d)" % (split_name, percentage_total, class_correct.sum(), class_total.sum()))
     
 def plotConfusionMatrix(confusion_matrix, labels_map):
     class_names = list(labels_map.values())
@@ -325,7 +320,6 @@ def getImagePredictions(image_path, model, labels_map):
     plt.show()
     
 def plot_filters_single_channel_big(t):
-    
     #setting the rows and columns
     nrows = t.shape[0]*t.shape[2]
     ncols = t.shape[1]*t.shape[3]
@@ -370,7 +364,6 @@ def plot_filters_single_channel(t):
     plt.show()
     
 def plot_filters_multi_channel(t):
-    
     #get the number of kernals
     num_kernels = t.shape[0]    
     
@@ -385,7 +378,6 @@ def plot_filters_multi_channel(t):
     #looping through all the kernels
     for i in range(t.shape[0]):
         ax1 = fig.add_subplot(num_rows,num_cols,i+1)
-        
         #for each kernel, we convert the tensor to numpy 
         npimg = np.array(t[i].numpy(), np.float32)
         #standardize the numpy image
@@ -397,7 +389,6 @@ def plot_filters_multi_channel(t):
         ax1.set_title(str(i))
         ax1.set_xticklabels([])
         ax1.set_yticklabels([])
-        
-    plt.savefig('myimage.png', dpi=100)    
+           
     plt.tight_layout()
     plt.show()
